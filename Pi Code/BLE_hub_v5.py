@@ -9,7 +9,7 @@ import signal
 SENSOR_NAME = "ESP32_SEN5x"
 SENSOR_CHAR_UUID = "beb5483e-36e1-4688-b7f5-ea07361b26a8"
 ACTUATOR_NAME = "ESP32_Dehumidifier"
-ACTUATOR_CHAR_UUID = "0000dcba-0000-1000-8000-00805f9b34fb"
+ACTUATOR_CHAR_UUID = "a16beeb4-bf06-4c17-9cec-fbc82db1a016"
 
 latest_data = {"T": 0.0, "H": 0.0, "P": 0.0, "history": []}
 control_status = {"command": "NONE", "success": False}
