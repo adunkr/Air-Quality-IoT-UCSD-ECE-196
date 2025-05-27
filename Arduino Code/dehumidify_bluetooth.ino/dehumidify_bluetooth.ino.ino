@@ -10,8 +10,8 @@
 // See the following for generating UUIDs:
 // https://www.uuidgenerator.net/
 
-#define SERVICE_UUID        "4fafc201-1fb5-459e-8fcc-c5c9c331914b"
-#define CHARACTERISTIC_UUID "beb5483e-36e1-4688-b7f5-ea07361b26a8"
+#define SERVICE_UUID        "73bfc77b-7e3f-4b41-8cd5-b719668f9d96"
+#define CHARACTERISTIC_UUID "a16beeb4-bf06-4c17-9cec-fbc82db1a016"
 
 const uint8_t PELTIER_PIN = 41;
 const uint8_t FAN_PIN     = 42;

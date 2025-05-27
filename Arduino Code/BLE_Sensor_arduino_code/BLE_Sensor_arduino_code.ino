@@ -7,11 +7,9 @@
 #include <BLEAdvertising.h>
 
 
-// === BLE UUIDs ===
 #define SERVICE_UUID        "4fafc201-1fb5-459e-8fcc-c5c9c331914b"
 #define CHARACTERISTIC_UUID "beb5483e-36e1-4688-b7f5-ea07361b26a8"
 
-// === GPIO Pins ===
 #define GREEN_LED 42
 #define YELLOW_LED 41
 #define RED_LED 40
@@ -20,7 +18,6 @@
 SensirionI2CSen5x sen5x;
 BLECharacteristic* pCharacteristic;
 
-// === Timer Variables ===
 unsigned long badStartTime = 0;
 bool buzzerOn = false;
 
@@ -37,7 +34,7 @@ void setup() {
   digitalWrite(RED_LED, LOW);
   digitalWrite(BUZZER, LOW);
 
-  Wire.begin(8, 9);  // I2C: SDA=8, SCL=9
+  Wire.begin(8, 9);
   sen5x.begin(Wire);
 
   uint16_t error = sen5x.deviceReset();
@@ -51,7 +48,6 @@ void setup() {
     Serial.println("Sensor initialized successfully.");
   }
 
-  // === BLE setup ===
   BLEDevice::init("ESP32_SEN5x");
   BLEServer* pServer = BLEDevice::createServer();
   BLEService* pService = pServer->createService(SERVICE_UUID);
@@ -78,7 +74,7 @@ void setup() {
 }
 
 void updateIndicators(float pm2_5, float humidity) {
-  int activeLED = RED_LED;  // Default fallback: RED
+  int activeLED = RED_LED;
 
   bool pm_good = pm2_5 <= 12.0;
   bool pm_ok = pm2_5 <= 35.4;
@@ -104,7 +100,7 @@ void updateIndicators(float pm2_5, float humidity) {
     } else if (!buzzerOn && millis() - badStartTime >= 300000) {
       digitalWrite(BUZZER, HIGH);
       buzzerOn = true;
-      Serial.println("🔔 Buzzer ON: Bad air quality for 5+ minutes");
+      Serial.println("Buzzer ON: Bad air quality for 5+ minutes");
     }
   } else {
     badStartTime = 0;
