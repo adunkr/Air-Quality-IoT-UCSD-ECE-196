@@ -25,7 +25,12 @@ class MyCallbacks : public BLECharacteristicCallbacks {
       inputString.trim();
       inputString.toUpperCase();
 
-      if (inputString == "PELTIER ON") {
+      if (inputString == "ON") {
+        digitalWrite(PELTIER_PIN, HIGH);
+        digitalWrite(FAN_PIN, HIGH);
+        Serial.println("System: ON");
+      }
+      else if (inputString == "PELTIER ON") {
         digitalWrite(PELTIER_PIN, HIGH);
         Serial.println("Peltier: ON");
       }
@@ -40,6 +45,11 @@ class MyCallbacks : public BLECharacteristicCallbacks {
       else if (inputString == "FAN OFF") {
         digitalWrite(FAN_PIN, LOW);
         Serial.println("Fan: OFF");
+      }
+      else if (inputString == "OFF") {
+        digitalWrite(PELTIER_PIN, LOW);
+        digitalWrite(FAN_PIN, LOW);
+        Serial.println("System: OFF");
       }
       else {
         Serial.print("Unknown command: ");
