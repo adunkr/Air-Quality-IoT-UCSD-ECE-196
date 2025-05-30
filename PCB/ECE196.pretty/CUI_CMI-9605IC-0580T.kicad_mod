@@ -1,0 +1,149 @@
+(footprint "CUI_CMI-9605IC-0580T"
+	(version 20241229)
+	(generator "pcbnew")
+	(generator_version "9.0")
+	(layer "F.Cu")
+	(property "Reference" "REF**"
+		(at 0.175 -6.635 0)
+		(layer "F.SilkS")
+		(uuid "1acc5b72-365a-400d-ab71-024a4752133e")
+		(effects
+			(font
+				(size 1 1)
+				(thickness 0.15)
+			)
+		)
+	)
+	(property "Value" "CUI_CMI-9605IC-0580T"
+		(at 9.7 6.595 0)
+		(layer "F.Fab")
+		(uuid "06544bb1-8dd6-4184-8a52-26afe837b881")
+		(effects
+			(font
+				(size 1 1)
+				(thickness 0.15)
+			)
+		)
+	)
+	(property "Datasheet" ""
+		(at 0 0 0)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "bcda4009-0e8a-4d4a-a1d1-4c48e74a22e0")
+		(effects
+			(font
+				(size 1.27 1.27)
+				(thickness 0.15)
+			)
+		)
+	)
+	(property "Description" ""
+		(at 0 0 0)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "d60bd71e-fb8a-4bce-a365-de9e0c499e9a")
+		(effects
+			(font
+				(size 1.27 1.27)
+				(thickness 0.15)
+			)
+		)
+	)
+	(attr through_hole)
+	(fp_circle
+		(center 0 0)
+		(end 4.8 0)
+		(stroke
+			(width 0.127)
+			(type solid)
+		)
+		(fill no)
+		(layer "F.SilkS")
+		(uuid "7c2125aa-c42c-478e-97f6-34e403bf67e9")
+	)
+	(fp_circle
+		(center 0 0)
+		(end 5.05 0)
+		(stroke
+			(width 0.05)
+			(type solid)
+		)
+		(fill no)
+		(layer "F.CrtYd")
+		(uuid "539b220e-e021-4aef-b94e-507eddd385f0")
+	)
+	(fp_circle
+		(center 0 0)
+		(end 4.8 0)
+		(stroke
+			(width 0.127)
+			(type solid)
+		)
+		(fill no)
+		(layer "F.Fab")
+		(uuid "6c239732-e17c-47ca-9d0f-68c982c4e5fc")
+	)
+	(fp_text user "+"
+		(at -4 -4.27 0)
+		(layer "F.SilkS")
+		(uuid "48a17b57-7e4b-45fc-b5c8-1cc1b5469e9c")
+		(effects
+			(font
+				(size 1 1)
+				(thickness 0.15)
+			)
+		)
+	)
+	(fp_text user "-"
+		(at -4 4.99 0)
+		(layer "F.SilkS")
+		(uuid "4dc62516-dc94-4712-99ff-00495b2ef00d")
+		(effects
+			(font
+				(size 1 1)
+				(thickness 0.15)
+			)
+		)
+	)
+	(fp_text user "+"
+		(at -4 -4.27 0)
+		(layer "F.Fab")
+		(uuid "855c314a-8501-46f2-a256-04ede2ab1bdc")
+		(effects
+			(font
+				(size 1 1)
+				(thickness 0.15)
+			)
+		)
+	)
+	(fp_text user "-"
+		(at -4 4.99 0)
+		(layer "F.Fab")
+		(uuid "fbbbd393-d1b6-4b28-923e-43ad3b686ba6")
+		(effects
+			(font
+				(size 1 1)
+				(thickness 0.15)
+			)
+		)
+	)
+	(pad "N" thru_hole circle
+		(at 0 2.5)
+		(size 2 2)
+		(drill 0.8)
+		(layers "*.Cu" "*.Mask")
+		(remove_unused_layers no)
+		(solder_mask_margin 0.102)
+		(uuid "3c452eea-af46-42a3-9e6f-fa6fe0c07d78")
+	)
+	(pad "P" thru_hole circle
+		(at 0 -2.5)
+		(size 2 2)
+		(drill 0.8)
+		(layers "*.Cu" "*.Mask")
+		(remove_unused_layers no)
+		(solder_mask_margin 0.102)
+		(uuid "0c9d5864-519a-4174-8e9b-6f4f89698fa0")
+	)
+	(embedded_fonts no)
+)
