@@ -48,7 +48,7 @@ void setup() {
     Serial.println("Sensor initialized successfully.");
   }
 
-  BLEDevice::init("ESP32_SEN5x");
+  BLEDevice::init("SensorDevice");
   BLEServer* pServer = BLEDevice::createServer();
   BLEService* pService = pServer->createService(SERVICE_UUID);
 
