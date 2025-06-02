@@ -97,9 +97,10 @@ try:
     ble_thread.daemon = True
     ble_thread.start()
 
-    ble_thread = threading.Thread(target=hysteresis)
-    ble_thread.daemon = True
-    ble_thread.start()
+    control_thread = threading.Thread(target=hysteresis)
+    control_thread.daemon = True
+    control_thread.start()
+    
 except ImportError:
     print("BLE functionality disabled or not available. Dashboard running without BLE support.")
 
