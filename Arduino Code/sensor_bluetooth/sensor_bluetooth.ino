@@ -76,7 +76,7 @@ void setup() {
 void updateIndicators(float pm2_5, float humidity) {
   int activeLED = RED_LED;
 
-  bool pm_good = pm2_5 <= 12.0;
+  /* bool pm_good = pm2_5 <= 12.0;
   bool pm_ok = pm2_5 <= 35.4;
   bool hum_good = humidity >= 30 && humidity <= 60;
   bool hum_ok = humidity >= 25 && humidity <= 70;
@@ -88,7 +88,19 @@ void updateIndicators(float pm2_5, float humidity) {
   } else {
     activeLED = RED_LED;
   }
+*/
+ 
+  bool hum_good = humidity <= 55;
+  bool hum_ok = humidity <= 65
 
+  if (hum_good) {
+    activeLED = GREEN_LED;
+  } else if ( hum_ok) {
+    activeLED = YELLOW_LED;
+  } else {
+    activeLED = RED_LED;
+  }
+  
   digitalWrite(GREEN_LED, activeLED == GREEN_LED ? HIGH : LOW);
   digitalWrite(YELLOW_LED, activeLED == YELLOW_LED ? HIGH : LOW);
   digitalWrite(RED_LED, activeLED == RED_LED ? HIGH : LOW);
