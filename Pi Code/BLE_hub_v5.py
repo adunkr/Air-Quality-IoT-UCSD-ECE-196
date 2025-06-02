@@ -97,7 +97,7 @@ try:
     ble_thread.daemon = True
     ble_thread.start()
 
-    ble_thread = threading.Thread(target=start_ble_thread)
+    ble_thread = threading.Thread(target=hysteresis)
     ble_thread.daemon = True
     ble_thread.start()
 except ImportError:
