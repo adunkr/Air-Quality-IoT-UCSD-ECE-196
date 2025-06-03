@@ -76,7 +76,7 @@ try:
         asyncio.set_event_loop(loop)
 
         async def control_logic():
-            nonlocal dehumidifier_on
+            global dehumidifier_on
             while True:
                 humidity = latest_data.get("H", 0.0)
                 if humidity > target_humidity + 3 and not dehumidifier_on:
