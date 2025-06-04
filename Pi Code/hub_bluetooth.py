@@ -40,7 +40,7 @@ latest_data = {
 control_status = {
     "dehumidifier_enabled": False,
     "auto_mode": True,
-    "target_humidity": 100,
+    "target_humidity": 40,
     "hysteresis": 3.0,
     "last_command": "NONE",
     "success": True,
@@ -83,7 +83,7 @@ try:
                     payload = json.loads(decoded)
                     print("Sensor data:", payload)
                     
-                    temperature_f = (payload.get("T", 0) * 9/5) + 32  # Convert C to F
+                    temperature_f = (payload.get("T", 0) * 9/5) + 32
                     latest_data["temperature"] = temperature_f
                     latest_data["humidity"] = payload.get("H", latest_data["humidity"])
                     latest_data["pm_levels"] = payload.get("P", latest_data["pm_levels"])
@@ -269,7 +269,6 @@ async def set_target_humidity(target: float, hysteresis: float = None):
 async def websocket_endpoint(websocket: WebSocket):
     await manager.connect(websocket)
     try:
-        # Send initial data
         await websocket.send_text(json.dumps({
             "type": "initial_data",
             "sensor_data": latest_data,
@@ -277,15 +276,11 @@ async def websocket_endpoint(websocket: WebSocket):
         }))
         
         while True:
-            # Keep connection alive by waiting for messages or timeout
             try:
-                # Wait for a message with timeout
                 await asyncio.wait_for(websocket.receive_text(), timeout=30.0)
             except asyncio.TimeoutError:
-                # Send a keep-alive message instead of ping
                 await websocket.send_text(json.dumps({"type": "keepalive"}))
             except:
-                # Connection closed
                 break
                 
     except WebSocketDisconnect:
