@@ -11,6 +11,9 @@ SENSOR_CHAR_UUID = "beb5483e-36e1-4688-b7f5-ea07361b26a8"
 ACTUATOR_NAME = "ESP32_Dehumidifier"
 ACTUATOR_CHAR_UUID = "a16beeb4-bf06-4c17-9cec-fbc82db1a016"
 
+target_humidity = 35  # HYSTERESIS VALUE
+dehumidifier_on = False
+
 latest_data = {"T": 0.0, "H": 0.0, "P": 0.0, "history": []}
 control_status = {"command": "NONE", "success": False}
 
@@ -65,10 +68,39 @@ try:
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
         loop.run_until_complete(ble_sensor_loop())
+    
+    #HYSTERESIS
+    def hysteresis():
+        global dehumidifier_on, target_humidity
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+
+        async def control_logic():
+            global dehumidifier_on
+            while True:
+                humidity = latest_data.get("H", 0.0)
+                if humidity > target_humidity + 3 and not dehumidifier_on:
+                    success = await send_command_to_actuator("ON")
+                    if success:
+                        dehumidifier_on = True
+                elif humidity < target_humidity - 3 and dehumidifier_on:
+                    success = await send_command_to_actuator("OFF")
+                    if success:
+                        dehumidifier_on = False
+                await asyncio.sleep(5)
+
+        loop.run_until_complete(control_logic())
+
+    
 
     ble_thread = threading.Thread(target=start_ble_thread)
     ble_thread.daemon = True
     ble_thread.start()
+
+    control_thread = threading.Thread(target=hysteresis)
+    control_thread.daemon = True
+    control_thread.start()
+    
 except ImportError:
     print("BLE functionality disabled or not available. Dashboard running without BLE support.")
 
