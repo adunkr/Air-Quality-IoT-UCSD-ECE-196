@@ -160,6 +160,11 @@ const Device = () => {
   };
 
   const updateTarget = async () => {
+    console.log(JSON.stringify({
+          target: tempTarget,
+          hysteresis: tempHysteresis
+        }))
+    
     try {
       const response = await fetch('/api/control/target', {
         method: 'POST',
@@ -228,7 +233,7 @@ const Device = () => {
       title: 'VOC Levels',
       dataKey: 'voc_levels',
       color: '#06B6D4',
-      unit: 'ppb',
+      unit: '',
       icon: Activity,
       showTarget: false
     }
@@ -248,7 +253,7 @@ const Device = () => {
           {currentChart.showTarget && (
             <div className="mt-2 pt-2 border-t border-white/10 text-xs text-gray-400">
               <p>Target: {currentChart.targetValue}%</p>
-              <p>Range: {currentChart.targetValue}% - {currentChart.targetValue + currentChart.hysteresisValue}%</p>
+              <p>Range: {currentChart.targetValue - currentChart.hysteresisValue}% - {currentChart.targetValue + currentChart.hysteresisValue}%</p>
             </div>
           )}
         </div>
@@ -313,10 +318,10 @@ const Device = () => {
           <div className="bg-white/10 backdrop-blur-md rounded-2xl p-6 border border-white/20 hover:bg-white/15 transition-all">
             <div className="flex items-center gap-3 mb-4">
               <Activity className="text-cyan-400" size={24} />
-              <h3 className="text-lg font-semibold">VOC Levels</h3>
+              <h3 className="text-lg font-semibold">VOC Index</h3>
             </div>
-            <p className="text-3xl font-bold text-cyan-400">{sensorData.voc_levels.toFixed(0)} ppb</p>
-            <p className="text-sm text-gray-400 mt-1">Volatile compounds</p>
+            <p className="text-3xl font-bold text-cyan-400">{sensorData.voc_levels.toFixed(0)}</p>
+            <p className="text-sm text-gray-400 mt-1">Compared to a Baseline (100)</p>
           </div>
         </div>
 
@@ -490,6 +495,13 @@ const Device = () => {
                         strokeDasharray="3 3"
                         strokeWidth={1}
                         label={{ value: `On: ${currentChart.targetValue + currentChart.hysteresisValue}%`, position: "topRight" }}
+                      />
+                      <ReferenceLine 
+                        y={currentChart.targetValue - currentChart.hysteresisValue} 
+                        stroke="#F59E0B" 
+                        strokeDasharray="3 3"
+                        strokeWidth={1}
+                        label={{ value: `Off: ${currentChart.targetValue - currentChart.hysteresisValue}%`, position: "topRight" }}
                       />
                     </>
                   )}

@@ -3,6 +3,7 @@ from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.responses import HTMLResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
 import uvicorn
 import json
 import asyncio
@@ -44,8 +45,14 @@ control_status = {
     "hysteresis": 3.0,
     "last_command": "NONE",
     "success": True,
-    "auto_control_active": False
+    "auto_control_active": False,
+    "sensor_connected": False,
+    "actuator_last_seen": None
 }
+
+class HumidityTarget(BaseModel):
+    target: float
+    hysteresis: float = None
 
 class ConnectionManager:
     def __init__(self):
@@ -71,67 +78,141 @@ try:
     from bleak import BleakClient, BleakScanner
 
     async def ble_sensor_loop():
-        print("Scanning for sensor...")
-        device = await BleakScanner.find_device_by_filter(lambda d, _: d.name == SENSOR_NAME)
+        while True:
+            try:
+                print("Scanning for sensor...")
+                device = await BleakScanner.find_device_by_filter(
+                    lambda d, _: d.name == SENSOR_NAME,
+                    timeout=10.0
+                )
+                
+                if not device:
+                    print("Sensor not found, retrying in 5 seconds...")
+                    control_status["sensor_connected"] = False
+                    await asyncio.sleep(5)
+                    continue
 
-        async with BleakClient(device) as client:
-            print(f"Connected to {SENSOR_NAME}")
+                async with BleakClient(device) as client:
+                    print(f"Connected to {SENSOR_NAME}")
+                    control_status["sensor_connected"] = True
+                    
+                    await manager.broadcast(json.dumps({
+                        "type": "connection_status",
+                        "sensor_connected": True
+                    }))
 
-            def notification_handler(_, data):
-                try:
-                    decoded = data.decode()
-                    payload = json.loads(decoded)
-                    print("Sensor data:", payload)
-                    
-                    temperature_f = (payload.get("T", 0) * 9/5) + 32
-                    latest_data["temperature"] = temperature_f
-                    latest_data["humidity"] = payload.get("H", latest_data["humidity"])
-                    latest_data["pm_levels"] = payload.get("P", latest_data["pm_levels"])
-                    latest_data["voc_levels"] = payload.get("V", latest_data["voc_levels"])
-                    latest_data["timestamp"] = datetime.now().isoformat()
-                    
-                    history_entry = {
-                        **payload,
-                        "timestamp": latest_data["timestamp"]
-                    }
-                    latest_data["history"].append(history_entry)
-                    if len(latest_data["history"]) > 100:
-                        latest_data["history"].pop(0)
-                    
-                    asyncio.create_task(manager.broadcast(json.dumps({
-                        "type": "sensor_data",
-                        "data": latest_data
-                    })))
-                    
-                    asyncio.create_task(handle_auto_control())
-                    
-                except Exception as e:
-                    print("Error decoding sensor data:", e)
+                    def notification_handler(_, data):
+                        try:
+                            decoded = data.decode()
+                            payload = json.loads(decoded)
+                            print("Sensor data:", payload)
+                            
+                            temperature_f = (payload.get("T", 0) * 9/5) + 32
+                            latest_data["temperature"] = temperature_f
+                            latest_data["humidity"] = payload.get("H", latest_data["humidity"])
+                            latest_data["pm_levels"] = payload.get("P", latest_data["pm_levels"])
+                            latest_data["voc_levels"] = payload.get("V", latest_data["voc_levels"])
+                            latest_data["timestamp"] = datetime.now().isoformat()
+                            
+                            history_entry = {
+                                **payload,
+                                "timestamp": latest_data["timestamp"]
+                            }
+                            latest_data["history"].append(history_entry)
+                            if len(latest_data["history"]) > 100:
+                                latest_data["history"].pop(0)
+                            
+                            asyncio.create_task(manager.broadcast(json.dumps({
+                                "type": "sensor_data",
+                                "data": latest_data
+                            })))
+                            
+                            asyncio.create_task(handle_auto_control())
+                            
+                        except Exception as e:
+                            print("Error decoding sensor data:", e)
 
-            await client.start_notify(SENSOR_CHAR_UUID, notification_handler)
-            while True:
-                await asyncio.sleep(5)
+                    await client.start_notify(SENSOR_CHAR_UUID, notification_handler)
+                    
+                    try:
+                        while client.is_connected:
+                            await asyncio.sleep(5)
+                    except Exception as e:
+                        print(f"Sensor connection lost: {e}")
+                        
+            except Exception as e:
+                print(f"Sensor connection error: {e}")
+                control_status["sensor_connected"] = False
+                await manager.broadcast(json.dumps({
+                    "type": "connection_status",
+                    "sensor_connected": False
+                }))
+                
+            print("Sensor disconnected, attempting reconnection in 5 seconds...")
+            await asyncio.sleep(5)
 
     async def send_command_to_actuator(command):
-        device = await BleakScanner.find_device_by_filter(
-            lambda d, _: d.name == ACTUATOR_NAME
-        )
-        if not device:
-            print("Actuator not found.")
-            return False
+        max_retries = 3
+        retry_delay = 2
         
-        try:
-            async with BleakClient(device) as client:
-                await client.write_gatt_char(ACTUATOR_CHAR_UUID, command.encode())
-                print(f"Sent command '{command}' to actuator.")
-                return True
-        except Exception as e:
-            print("Failed to send command:", e)
-            return False
+        for attempt in range(max_retries):
+            try:
+                print(f"Attempting to send '{command}' to actuator (attempt {attempt + 1}/{max_retries})")
+                
+                device = await BleakScanner.find_device_by_filter(
+                    lambda d, _: d.name == ACTUATOR_NAME,
+                    timeout=10.0
+                )
+                if not device:
+                    print(f"Actuator not found on attempt {attempt + 1}")
+                    if attempt < max_retries - 1:
+                        await asyncio.sleep(retry_delay)
+                        continue
+                    return False
+                
+                async with BleakClient(device, timeout=15.0) as client:
+                    if not client.is_connected:
+                        print("Failed to connect to actuator")
+                        if attempt < max_retries - 1:
+                            await asyncio.sleep(retry_delay)
+                            continue
+                        return False
+                    
+                    await asyncio.sleep(0.5)
+                    
+                    await client.write_gatt_char(ACTUATOR_CHAR_UUID, command.encode())
+                    print(f"Sent command '{command}' to actuator.")
+                    control_status["actuator_last_seen"] = datetime.now().isoformat()
+                    
+                    try:
+                        await asyncio.sleep(0.2)
+                        response = await client.read_gatt_char(ACTUATOR_CHAR_UUID)
+                        response_str = response.decode('utf-8')
+                        print(f"Actuator response: {response_str}")
+                    except Exception as e:
+                        print(f"Could not read actuator response: {e}")
+                    
+                    return True
+                    
+            except Exception as e:
+                print(f"Failed to send command to actuator (attempt {attempt + 1}): {e}")
+                if attempt < max_retries - 1:
+                    print(f"Retrying in {retry_delay} seconds...")
+                    await asyncio.sleep(retry_delay)
+                    retry_delay *= 1.5
+                else:
+                    print("All retry attempts failed")
+                    
+        return False
 
+    actuator_lock = asyncio.Lock()
+    
     async def handle_auto_control():
         """Handle automatic humidity control with hysteresis"""
         if not control_status["auto_mode"]:
+            return
+        
+        if not control_status["sensor_connected"]:
             return
             
         current_humidity = latest_data["humidity"]
@@ -143,29 +224,47 @@ try:
         if current_humidity > target + hysteresis:
             should_run = True
             reason = f"Humidity {current_humidity:.1f}% > {target + hysteresis:.1f}%"
-        elif current_humidity <= target:
+        elif current_humidity <= target - hysteresis:
             should_run = False
-            reason = f"Humidity {current_humidity:.1f}% <= {target:.1f}%"
+            reason = f"Humidity {current_humidity:.1f}% <= {target - hysteresis:.1f}%"
         else:
             should_run = control_status["dehumidifier_enabled"]
             reason = f"In hysteresis zone ({target:.1f}% - {target + hysteresis:.1f}%)"
         
         if should_run != control_status["dehumidifier_enabled"]:
-            command = "on" if should_run else "off"
-            print(f"Auto control: {command} - {reason}")
-            
-            success = await send_command_to_actuator(command)
-            if success:
-                control_status["dehumidifier_enabled"] = should_run
-                control_status["last_command"] = command.upper()
-                control_status["auto_control_active"] = True
+            if actuator_lock.locked():
+                print("Actuator busy, skipping command")
+                return
                 
-                status_update = {
-                    "type": "control_update",
-                    "data": control_status,
-                    "reason": reason
-                }
-                await manager.broadcast(json.dumps(status_update))
+            async with actuator_lock:
+                command = "on" if should_run else "off"
+                print(f"Auto control: {command} - {reason}")
+                
+                success = await send_command_to_actuator(command)
+                if success:
+                    control_status["dehumidifier_enabled"] = should_run
+                    control_status["last_command"] = command.upper()
+                    control_status["auto_control_active"] = True
+                    control_status["success"] = True
+                    
+                    status_update = {
+                        "type": "control_update",
+                        "data": control_status,
+                        "reason": reason
+                    }
+                    await manager.broadcast(json.dumps(status_update))
+                else:
+                    control_status["success"] = False
+                    await manager.broadcast(json.dumps({
+                        "type": "control_update",
+                        "data": control_status,
+                        "reason": "Failed to send command to actuator"
+                    }))
+        else:
+            if should_run:
+                print(f"Dehumidifier already ON - {reason}")
+            else:
+                print(f"Dehumidifier already OFF - {reason}")
 
     def start_ble_thread():
         loop = asyncio.new_event_loop()
@@ -173,9 +272,11 @@ try:
         loop.run_until_complete(ble_sensor_loop())
 
 except ImportError:
-    print("BLE functionality disabled. Using simulated data.")
+    print("BLE functionality disabled")
 
 app = FastAPI(title="IoT Hub Dashboard", version="1.0.0")
+
+import os
 
 app.add_middleware(
     CORSMiddleware,
@@ -185,7 +286,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.mount("/static", StaticFiles(directory="build/static"), name="static")
+if os.path.exists("build/static"):
+    app.mount("/static", StaticFiles(directory="build/static"), name="static")
 
 @app.get("/api/data")
 async def get_current_data():
@@ -195,7 +297,8 @@ async def get_current_data():
         "humidity": round(latest_data["humidity"], 1),
         "pm_levels": round(latest_data["pm_levels"], 2),
         "voc_levels": round(latest_data["voc_levels"], 0),
-        "timestamp": latest_data["timestamp"]
+        "timestamp": latest_data["timestamp"],
+        "sensor_connected": control_status["sensor_connected"]
     }
 
 @app.get("/api/history")
@@ -249,16 +352,16 @@ async def toggle_auto_mode():
     return control_status
 
 @app.post("/api/control/target")
-async def set_target_humidity(target: float, hysteresis: float = None):
+async def set_target_humidity(data: HumidityTarget):
     """Set target humidity and optional hysteresis"""
-    if not 20 <= target <= 80:
+    if not 20 <= data.target <= 80:
         return {"error": "Target humidity must be between 20% and 80%", "success": False}
     
-    control_status["target_humidity"] = target
-    if hysteresis is not None:
-        if not 1 <= hysteresis <= 10:
+    control_status["target_humidity"] = data.target
+    if data.hysteresis is not None:
+        if not 1 <= data.hysteresis <= 10:
             return {"error": "Hysteresis must be between 1% and 10%", "success": False}
-        control_status["hysteresis"] = hysteresis
+        control_status["hysteresis"] = data.hysteresis
     
     if control_status["auto_mode"]:
         await handle_auto_control()
@@ -291,11 +394,20 @@ async def websocket_endpoint(websocket: WebSocket):
 
 @app.get("/", response_class=HTMLResponse)
 async def serve_react_app():
-    return FileResponse('build/index.html')
+    if os.path.exists('build/index.html'):
+        return FileResponse('build/index.html')
+    else:
+        return HTMLResponse("<h1>IoT Hub Dashboard API</h1><p>Backend running successfully. Frontend build files not found.</p>")
 
 @app.get("/{path:path}")
 async def serve_react_routes(path: str):
-    return FileResponse('build/index.html')
+    if path.startswith("api/"):
+        return {"error": "API endpoint not found"}
+    
+    if os.path.exists('build/index.html'):
+        return FileResponse('build/index.html')
+    else:
+        return {"error": "Frontend not built"}
 
 @app.on_event("startup")
 async def startup_event():
