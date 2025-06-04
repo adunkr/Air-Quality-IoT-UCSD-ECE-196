@@ -225,7 +225,7 @@ const Device = () => {
       title: 'PM Levels',
       dataKey: 'pm_levels',
       color: '#8B5CF6',
-      unit: 'ppm',
+      unit: ' μg/m\u00B3',
       icon: Wind,
       showTarget: false
     },
@@ -311,7 +311,7 @@ const Device = () => {
               <Wind className="text-purple-400" size={24} />
               <h3 className="text-lg font-semibold">PM Levels</h3>
             </div>
-            <p className="text-3xl font-bold text-purple-400">{sensorData.pm_levels.toFixed(2)} ppm</p>
+            <p className="text-3xl font-bold text-purple-400">{sensorData.pm_levels.toFixed(2)} μg/m<sup>3</sup></p>
             <p className="text-sm text-gray-400 mt-1">Particulate matter</p>
           </div>
 
