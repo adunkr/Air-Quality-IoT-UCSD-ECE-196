@@ -137,6 +137,9 @@ void loop() {
       Serial.println("Device connected");
     } else {
       Serial.println("Device disconnected");
+      digitalWrite(PELTIER_PIN, LOW);
+      digitalWrite(FAN_PIN, LOW);
+      Serial.println("System: OFF");
     }
     lastConnectionState = deviceConnected;
   }
