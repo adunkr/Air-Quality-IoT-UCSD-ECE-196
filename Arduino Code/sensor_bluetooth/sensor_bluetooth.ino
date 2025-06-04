@@ -6,7 +6,6 @@
 #include <BLE2902.h>
 #include <BLEAdvertising.h>
 
-
 #define SERVICE_UUID        "4fafc201-1fb5-459e-8fcc-c5c9c331914b"
 #define CHARACTERISTIC_UUID "beb5483e-36e1-4688-b7f5-ea07361b26a8"
 
@@ -16,10 +15,29 @@
 #define BUZZER 9
 
 SensirionI2CSen5x sen5x;
-BLECharacteristic* pCharacteristic;
+BLEServer* pServer = nullptr;
+BLEService* pService = nullptr;
+BLECharacteristic* pCharacteristic = nullptr;
+BLEAdvertising* pAdvertising = nullptr;
+bool deviceConnected = false;
 
 unsigned long badStartTime = 0;
 bool buzzerOn = false;
+
+class MyServerCallbacks: public BLEServerCallbacks {
+    void onConnect(BLEServer* pServer) {
+      deviceConnected = true;
+      Serial.println("Client connected to sensor");
+    };
+
+    void onDisconnect(BLEServer* pServer) {
+      deviceConnected = false;
+      Serial.println("Client disconnected from sensor");
+      delay(500);
+      pServer->getAdvertising()->start();
+      Serial.println("Advertising restarted");
+    }
+};
 
 void setup() {
   Serial.begin(115200);
@@ -49,8 +67,10 @@ void setup() {
   }
 
   BLEDevice::init("SensorDevice");
-  BLEServer* pServer = BLEDevice::createServer();
-  BLEService* pService = pServer->createService(SERVICE_UUID);
+  pServer = BLEDevice::createServer();
+  pServer->setCallbacks(new MyServerCallbacks());
+  
+  pService = pServer->createService(SERVICE_UUID);
 
   pCharacteristic = pService->createCharacteristic(
     CHARACTERISTIC_UUID,
@@ -61,9 +81,11 @@ void setup() {
   pCharacteristic->setValue("Waiting...");
   pService->start();
 
-  BLEAdvertising* pAdvertising = BLEDevice::getAdvertising();
+  pAdvertising = BLEDevice::getAdvertising();
   pAdvertising->setScanResponse(true);
   pAdvertising->addServiceUUID(SERVICE_UUID);
+  pAdvertising->setMinPreferred(0x06);
+  pAdvertising->setMinPreferred(0x12);
 
   BLEAdvertisementData adData;
   adData.setName("ESP32_SEN5x");
@@ -91,11 +113,11 @@ void updateIndicators(float pm2_5, float humidity) {
 */
  
   bool hum_good = humidity <= 55;
-  bool hum_ok = humidity <= 65
+  bool hum_ok = humidity <= 65;
 
   if (hum_good) {
     activeLED = GREEN_LED;
-  } else if ( hum_ok) {
+  } else if (hum_ok) {
     activeLED = YELLOW_LED;
   } else {
     activeLED = RED_LED;
@@ -105,7 +127,7 @@ void updateIndicators(float pm2_5, float humidity) {
   digitalWrite(YELLOW_LED, activeLED == YELLOW_LED ? HIGH : LOW);
   digitalWrite(RED_LED, activeLED == RED_LED ? HIGH : LOW);
 
-  bool bad_air = !(pm_ok && hum_ok);
+  bool bad_air = !(hum_ok);
   if (bad_air) {
     if (badStartTime == 0) {
       badStartTime = millis();
@@ -122,6 +144,16 @@ void updateIndicators(float pm2_5, float humidity) {
 }
 
 void loop() {
+  static bool lastConnectionState = false;
+  if (deviceConnected != lastConnectionState) {
+    if (deviceConnected) {
+      Serial.println("Sensor connected");
+    } else {
+      Serial.println("Sensor disconnected");
+    }
+    lastConnectionState = deviceConnected;
+  }
+
   float pm1, pm2p5, pm4, pm10, hum, temp, voc, nox;
   uint16_t err = sen5x.readMeasuredValues(pm1, pm2p5, pm4, pm10, hum, temp, voc, nox);
 
@@ -130,9 +162,15 @@ void loop() {
                  ",\"H\":" + String(hum, 1) +
                  ",\"P\":" + String(pm2p5, 1) + 
                  ",\"V\":" + String(voc, 2) + "}";
-    Serial.println("BLE: " + msg);
-    pCharacteristic->setValue(msg.c_str());
-    pCharacteristic->notify();
+    
+    if (deviceConnected) {
+      Serial.println("BLE: " + msg);
+      pCharacteristic->setValue(msg.c_str());
+      pCharacteristic->notify();
+    } else {
+      Serial.println("Data ready but not connected: " + msg);
+    }
+    
     updateIndicators(pm2p5, hum);
   } else {
     Serial.println("Sensor read error — fallback to RED");

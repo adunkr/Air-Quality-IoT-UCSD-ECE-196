@@ -17,6 +17,24 @@ const uint8_t PELTIER_PIN = 41;
 const uint8_t FAN_PIN     = 42;
 const uint8_t LED_PIN     = 17;
 
+BLEServer* pServer = nullptr;
+BLEService* pService = nullptr;
+BLECharacteristic* pCharacteristic = nullptr;
+bool deviceConnected = false;
+
+class MyServerCallbacks: public BLEServerCallbacks {
+    void onConnect(BLEServer* pServer) {
+      deviceConnected = true;
+      Serial.println("Client connected");
+    };
+
+    void onDisconnect(BLEServer* pServer) {
+      deviceConnected = false;
+      Serial.println("Client disconnected");
+      pServer->getAdvertising()->start();
+    }
+};
+
 class MyCallbacks : public BLECharacteristicCallbacks {
   void onWrite(BLECharacteristic *pCharacteristic) {
     String inputString = pCharacteristic->getValue();
@@ -25,35 +43,49 @@ class MyCallbacks : public BLECharacteristicCallbacks {
       inputString.trim();
       inputString.toUpperCase();
 
+      Serial.print("Received command: ");
+      Serial.println(inputString);
+
       if (inputString == "ON") {
         digitalWrite(PELTIER_PIN, HIGH);
         digitalWrite(FAN_PIN, HIGH);
         Serial.println("System: ON");
+        pCharacteristic->setValue("System ON");
       }
       else if (inputString == "PELTIER ON") {
         digitalWrite(PELTIER_PIN, HIGH);
         Serial.println("Peltier: ON");
+        pCharacteristic->setValue("Peltier ON");
       }
       else if (inputString == "PELTIER OFF") {
         digitalWrite(PELTIER_PIN, LOW);
         Serial.println("Peltier: OFF");
+        pCharacteristic->setValue("Peltier OFF");
       }
       else if (inputString == "FAN ON") {
         digitalWrite(FAN_PIN, HIGH);
         Serial.println("Fan: ON");
+        pCharacteristic->setValue("Fan ON");
       }
       else if (inputString == "FAN OFF") {
         digitalWrite(FAN_PIN, LOW);
         Serial.println("Fan: OFF");
+        pCharacteristic->setValue("Fan OFF");
       }
       else if (inputString == "OFF") {
         digitalWrite(PELTIER_PIN, LOW);
         digitalWrite(FAN_PIN, LOW);
         Serial.println("System: OFF");
+        pCharacteristic->setValue("System OFF");
       }
       else {
         Serial.print("Unknown command: ");
         Serial.println(inputString);
+        pCharacteristic->setValue("Unknown command");
+      }
+      
+      if (deviceConnected) {
+        pCharacteristic->notify();
       }
     }
   }
@@ -71,23 +103,43 @@ void setup() {
   Serial.println("READY on Dehumidify");
 
   BLEDevice::init("Dehumidify");
-  BLEServer *pServer = BLEDevice::createServer();
+  pServer = BLEDevice::createServer();
+  pServer->setCallbacks(new MyServerCallbacks());
 
-  BLEService *pService = pServer->createService(SERVICE_UUID);
+  pService = pServer->createService(SERVICE_UUID);
 
-  BLECharacteristic *pCharacteristic =
-    pService->createCharacteristic(CHARACTERISTIC_UUID, BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_WRITE);
+  pCharacteristic = pService->createCharacteristic(
+    CHARACTERISTIC_UUID, 
+    BLECharacteristic::PROPERTY_READ | 
+    BLECharacteristic::PROPERTY_WRITE |
+    BLECharacteristic::PROPERTY_NOTIFY
+  );
 
   pCharacteristic->setCallbacks(new MyCallbacks());
-
-  pCharacteristic->setValue("Hello World");
+  pCharacteristic->setValue("Ready");
+  
   pService->start();
 
   BLEAdvertising *pAdvertising = pServer->getAdvertising();
+  pAdvertising->addServiceUUID(SERVICE_UUID);
+  pAdvertising->setScanResponse(true);
+  pAdvertising->setMinPreferred(0x06);
+  pAdvertising->setMinPreferred(0x12);
   pAdvertising->start();
+  
+  Serial.println("BLE advertising started. Waiting for connections...");
 }
 
 void loop() {
-  // put your main code here, to run repeatedly:
-  delay(2000);
+  static bool lastConnectionState = false;
+  if (deviceConnected != lastConnectionState) {
+    if (deviceConnected) {
+      Serial.println("Device connected");
+    } else {
+      Serial.println("Device disconnected");
+    }
+    lastConnectionState = deviceConnected;
+  }
+  
+  delay(1000);
 }
