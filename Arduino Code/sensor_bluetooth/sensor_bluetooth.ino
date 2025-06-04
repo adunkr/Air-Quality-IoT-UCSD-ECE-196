@@ -81,9 +81,9 @@ void updateIndicators(float pm2_5, float humidity) {
   bool hum_good = humidity >= 30 && humidity <= 60;
   bool hum_ok = humidity >= 25 && humidity <= 70;
 
-  if (pm_good && hum_good) {
+  if (pm_good) {
     activeLED = GREEN_LED;
-  } else if (pm_ok && hum_ok) {
+  } else if (pm_ok) {
     activeLED = YELLOW_LED;
   } else {
     activeLED = RED_LED;
@@ -116,7 +116,8 @@ void loop() {
   if (!err && !isnan(temp) && !isnan(hum) && !isnan(pm2p5)) {
     String msg = "{\"T\":" + String(temp, 1) +
                  ",\"H\":" + String(hum, 1) +
-                 ",\"P\":" + String(pm2p5, 1) + "}";
+                 ",\"P\":" + String(pm2p5, 1) + 
+                 ",\"V\":" + String(voc, 2) + "}";
     Serial.println("BLE: " + msg);
     pCharacteristic->setValue(msg.c_str());
     pCharacteristic->notify();

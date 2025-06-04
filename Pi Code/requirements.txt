@@ -1,0 +1,4 @@
+fastapi
+uvicorn
+bleak
+websockets==12.0
