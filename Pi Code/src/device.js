@@ -30,12 +30,10 @@ const Device = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   useEffect(() => {
-    // Fetch initial data
     fetchData();
     fetchControlStatus();
     fetchHistory();
 
-    // Setup WebSocket connection
     const ws = new WebSocket(`ws://${window.location.host}/ws`);
     
     ws.onopen = () => {
@@ -49,7 +47,6 @@ const Device = () => {
       if (message.type === 'sensor_data') {
         setSensorData(message.data);
         
-        // Update charts with new data point
         const newDataPoint = {
           time: new Date().toLocaleTimeString('en-US', { 
             hour12: false, 
@@ -66,7 +63,7 @@ const Device = () => {
         
         setExtendedHistory(prev => {
           const updated = [...prev, newDataPoint];
-          return updated.slice(-600); // Keep last 50 points
+          return updated.slice(-600);
         });
       } else if (message.type === 'control_update') {
         setControlStatus(message.data);
@@ -113,7 +110,6 @@ const Device = () => {
       const data = await response.json();
       const historyData = data.history || [];
       
-      // Process data for charts
       const processedData = historyData.map((entry, index) => ({
         time: new Date(entry.timestamp).toLocaleTimeString('en-US', { 
           hour12: false, 
