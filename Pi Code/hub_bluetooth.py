@@ -119,7 +119,7 @@ try:
                                 "timestamp": latest_data["timestamp"]
                             }
                             latest_data["history"].append(history_entry)
-                            if len(latest_data["history"]) > 100:
+                            if len(latest_data["history"]) > 600:
                                 latest_data["history"].pop(0)
                             
                             asyncio.create_task(manager.broadcast(json.dumps({
@@ -397,7 +397,7 @@ async def serve_react_app():
     if os.path.exists('build/index.html'):
         return FileResponse('build/index.html')
     else:
-        return HTMLResponse("<h1>IoT Hub Dashboard API</h1><p>Backend running successfully. Frontend build files not found.</p>")
+        return HTMLResponse("<h1>IoT Hub Dashboard API</h1><p>Backend running successfully. Frontend files not found.</p>")
 
 @app.get("/{path:path}")
 async def serve_react_routes(path: str):
