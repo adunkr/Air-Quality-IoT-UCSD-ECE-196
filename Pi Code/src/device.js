@@ -66,7 +66,7 @@ const Device = () => {
         
         setExtendedHistory(prev => {
           const updated = [...prev, newDataPoint];
-          return updated.slice(-50); // Keep last 50 points
+          return updated.slice(-600); // Keep last 50 points
         });
       } else if (message.type === 'control_update') {
         setControlStatus(message.data);
@@ -109,7 +109,7 @@ const Device = () => {
 
   const fetchHistory = async () => {
     try {
-      const response = await fetch('/api/history?limit=50');
+      const response = await fetch('/api/history?limit=600');
       const data = await response.json();
       const historyData = data.history || [];
       

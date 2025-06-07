@@ -41,7 +41,7 @@ latest_data = {
 control_status = {
     "dehumidifier_enabled": False,
     "auto_mode": True,
-    "target_humidity": 40,
+    "target_humidity": 20,
     "hysteresis": 3.0,
     "last_command": "NONE",
     "success": True,
@@ -420,7 +420,7 @@ async def startup_event():
             ble_thread.start()
             print("BLE sensor thread started")
     except:
-        print("Simulation thread started")
+        print("No BLE thread started")
 
 if __name__ == "__main__":
     print("IoT Hub Dashboard Server")
